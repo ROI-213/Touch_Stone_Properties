@@ -43,6 +43,7 @@ export function NavbarAuthButton() {
   const initial = displayName.charAt(0).toUpperCase();
 
   const items: Array<{ icon: React.ComponentType<{ size?: number }>; label: string; to: string }> = [
+    { icon: UserIcon, label: "My Dashboard", to: "/customer-dashboard" },
     { icon: UserCog, label: "Profile", to: "/customer-dashboard/profile" },
   ];
 

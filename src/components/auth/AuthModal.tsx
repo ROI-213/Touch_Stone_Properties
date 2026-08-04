@@ -257,12 +257,20 @@ function LoginForm() {
       if (!data.session?.user) throw new Error("Sign-in succeeded, but no session was created.");
 
       const uid = data.session.user.id;
-      const [{ data: adminFlag }, { data: staffRow }] = await Promise.all([
-        supabase.rpc("has_role", { _user_id: uid, _role: "admin" }),
-        supabase.from("staff_users").select("id,status").eq("auth_user_id", uid).maybeSingle(),
-      ]);
-      const isAdminAcct = adminFlag === true;
-      const isStaffAcct = !!staffRow && staffRow.status === "active";
+
+      // Check admin/staff roles — wrap in try/catch so RLS errors don't log the user out
+      let isAdminAcct = false;
+      let isStaffAcct = false;
+      try {
+        const [{ data: adminFlag }, { data: staffRow }] = await Promise.all([
+          supabase.rpc("has_role", { _user_id: uid, _role: "admin" }),
+          supabase.from("staff_users").select("id,status").eq("auth_user_id", uid).maybeSingle(),
+        ]);
+        isAdminAcct = adminFlag === true;
+        isStaffAcct = !!staffRow && staffRow.status === "active";
+      } catch {
+        // If role check fails (e.g. network/RLS), treat as regular customer — do not log out
+      }
 
       if (isAdminLogin) {
         if (!isAdminAcct && !isStaffAcct) {
@@ -281,12 +289,15 @@ function LoginForm() {
         throw new Error("This is a staff/admin account. Please sign in at /admin/login.");
       }
 
-      toast.success("Logged in successfully");
+      // ✅ Successful customer login — close modal and show logged-in state
+      toast.success("Logged in successfully! Welcome back.");
       closeModal();
-      
-      // If they are on the home page or login-specific routes, take them to their dashboard
-      if (pathname === "/" || pathname === "/login") {
-        await navigate({ to: "/customer-dashboard" });
+
+      // Redirect to customer dashboard only from home/login pages.
+      // On other pages (property listings, etc.) just stay on the current page
+      // but now logged in — the navbar will update to show the user avatar.
+      if (pathname === "/" || pathname === "/login" || pathname === "/admin/login") {
+        await navigate({ to: "/customer-dashboard", replace: true });
       }
     } catch (error) {
       const raw = error instanceof Error ? error.message : "";
@@ -305,6 +316,7 @@ function LoginForm() {
       setLoading(false);
     }
   };
+
 
 
   return (
