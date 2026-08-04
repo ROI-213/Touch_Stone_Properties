@@ -64,10 +64,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     let cancelled = false;
-    let initialSessionResolved = false;
     let subscription: { unsubscribe: () => void } | undefined;
 
     try {
+      // onAuthStateChange fires INITIAL_SESSION on mount with the restored
+      // session from localStorage — no need to call getSession() separately.
+      // Calling both causes a race where getSession() can resolve with null
+      // before the localStorage token is read, triggering a spurious sign-out.
       const { data: sub } = supabase.auth.onAuthStateChange((event, sess) => {
         if (cancelled) return;
         setSession(sess);
@@ -91,27 +94,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setLoading(false);
     }
 
-    supabase.auth.getSession()
-      .then(({ data }) => {
-        if (cancelled) return;
-        setSession(data.session);
-        setUser(data.session?.user ?? null);
-        if (data.session?.user) fetchProfile(data.session.user.id);
-      })
-      .catch((error) => {
-        if (cancelled) return;
-        console.warn("[Auth] session restore failed:", error);
-        resetAuthState();
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
-
     return () => {
       cancelled = true;
       subscription?.unsubscribe();
     };
   }, [qc]);
+
 
   const signOut = async () => {
     try {
