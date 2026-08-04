@@ -398,6 +398,10 @@ export function Navbar() {
   const [scrolled, setScrolled] = useState(false);
   const [hidden, setHidden] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
+  // Track if this is the very first mount so we skip the slide-in animation
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => { setMounted(true); }, []);
 
   useEffect(() => {
     let lastY = window.scrollY;
@@ -423,10 +427,13 @@ export function Navbar() {
         <AnimatePresence>
           {!hidden && (
             <motion.header
-              initial={{ y: -50, opacity: 0 }}
+              // On first mount show instantly (no entry animation).
+              // After that, when hidden=true triggers exit, slide out smoothly.
+              initial={false}
               animate={{ y: 0, opacity: 1 }}
               exit={{ y: -80, opacity: 0 }}
               transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
+              style={mounted ? undefined : { opacity: 1, transform: "none" }}
               className={`pointer-events-auto flex w-full items-center justify-between gap-3 rounded-[18px] border transition-all duration-300 ${
                 scrolled
                   ? "border-black/10 bg-white/90 backdrop-blur-md py-2 px-3 sm:px-5 shadow-[0_12px_40px_rgba(0,0,0,0.12)]"
