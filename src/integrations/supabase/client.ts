@@ -4,8 +4,15 @@ import type { Database } from './types';
 
 function createSupabaseClient() {
   // Use import.meta.env for client-side (Vite build-time replacement)
-  const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
-  const SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+  // Fall back to hardcoded public values for SSR environments where VITE_ vars
+  // are not available at runtime (they are build-time only in Vite).
+  const SUPABASE_URL =
+    import.meta.env.VITE_SUPABASE_URL ||
+    "https://svdbmoozphbivdvdmlfu.supabase.co";
+
+  const SUPABASE_PUBLISHABLE_KEY =
+    import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY ||
+    "sb_publishable_ThrfnIRx5NNAaV-xLkVftg_McfWpTMh";
 
   if (!SUPABASE_URL || !SUPABASE_PUBLISHABLE_KEY) {
     const missing = [
