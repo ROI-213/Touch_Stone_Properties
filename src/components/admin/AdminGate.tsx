@@ -1,10 +1,10 @@
 import { useEffect, type ReactNode } from "react";
-import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
+import { useNavigate, useRouterState } from "@tanstack/react-router";
 import { useIsAdmin } from "@/hooks/useIsAdmin";
 import { useStaffPermissions } from "@/hooks/useStaffPermissions";
 import { useAuth } from "@/contexts/AuthContext";
-import { ShieldAlert } from "lucide-react";
 import { findModuleForPath } from "@/lib/staff-modules";
+import { ADMIN_NAV } from "@/components/admin/AdminSidebar";
 
 export function AdminGate({ children }: { children: ReactNode }) {
   const navigate = useNavigate();
@@ -30,27 +30,28 @@ export function AdminGate({ children }: { children: ReactNode }) {
     return null;
   }
 
-  // Module-level gate for staff
+  // Module-level gate for staff — only show assigned modules
   if (!isAdmin) {
-    // Allow base /admin and the dedicated tasks page for any staff
     const isBase = pathname === "/admin" || pathname === "/admin/";
     const isTasks = pathname.startsWith("/admin/tasks");
-    if (!isBase && !isTasks) {
+    const isChangePassword = pathname.startsWith("/admin/change-password");
+
+    if (!isBase && !isTasks && !isChangePassword) {
       const mod = findModuleForPath(pathname);
       if (!mod || !can(mod.key, "view")) {
-        return (
-          <div className="grid min-h-screen place-items-center bg-slate-50 px-4">
-            <div className="max-w-md rounded-2xl border border-slate-200 bg-white p-8 text-center shadow-sm">
-              <div className="mx-auto grid h-12 w-12 place-items-center rounded-full bg-red-50 text-red-600"><ShieldAlert size={20} /></div>
-              <h1 className="mt-4 font-display text-2xl font-semibold text-[#0a1f44]">Access Denied</h1>
-              <p className="mt-2 text-sm text-slate-600">You don't have permission to view this module.</p>
-              <Link to="/admin/tasks" className="mt-4 inline-block text-xs text-[#c9a961] hover:underline">→ Go to My Tasks</Link>
-            </div>
-          </div>
-        );
+        // Staff doesn't have permission for this module.
+        // Redirect to their first permitted sidebar item, or /admin/tasks as fallback.
+        const firstPermitted = ADMIN_NAV.find((item) => {
+          if (item.to === "/admin/tasks" || item.to === "/admin/change-password") return false;
+          if (!item.moduleKey) return false;
+          return can(item.moduleKey, "view");
+        });
+        void navigate({ to: firstPermitted?.to ?? "/admin/tasks", replace: true });
+        return null;
       }
     }
   }
 
   return <>{children}</>;
 }
+
